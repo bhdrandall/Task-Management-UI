@@ -26,9 +26,8 @@ export const projectsApi = {
 
 // Workflows
 export const workflowsApi = {
-  list: (projectId?: number) => {
-    const params = projectId ? { project_id: projectId } : {};
-    return api.get<Workflow[]>('/workflows', { params }).then(r => r.data);
+  list: (filters?: { project_id?: number; workflow_type?: string }) => {
+    return api.get<Workflow[]>('/workflows', { params: filters }).then(r => r.data);
   },
   get: (id: number) => api.get<Workflow>(`/workflows/${id}`).then(r => r.data),
   create: (data: CreateWorkflowInput) => api.post<Workflow>('/workflows', data).then(r => r.data),

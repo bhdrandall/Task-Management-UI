@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { storiesApi, epicsApi } from '../services/api';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { useCurrentProject } from '../context/ProjectContext';
 import type { Story } from '../types';
 
 export function Stories() {
   const queryClient = useQueryClient();
+  const { currentProject } = useCurrentProject();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStory, setEditingStory] = useState<Story | null>(null);
   const [formData, setFormData] = useState({
@@ -17,15 +19,24 @@ export function Stories() {
     epic_id: undefined as number | undefined,
   });
 
-  const { data: stories = [], isLoading } = useQuery({
+  // Get epics for current project
+  const { data: epics = [] } = useQuery({
+    queryKey: ['epics', currentProject?.id],
+    queryFn: () => epicsApi.list(currentProject?.id),
+    enabled: !!currentProject,
+  });
+
+  const epicIds = epics.map(e => e.id);
+
+  const { data: allStories = [], isLoading } = useQuery({
     queryKey: ['stories'],
     queryFn: () => storiesApi.list(),
   });
 
-  const { data: epics = [] } = useQuery({
-    queryKey: ['epics'],
-    queryFn: () => epicsApi.list(),
-  });
+  // Filter stories by current project's epics
+  const stories = currentProject
+    ? allStories.filter(s => s.epic_id && epicIds.includes(s.epic_id))
+    : allStories;
 
   const createMutation = useMutation({
     mutationFn: storiesApi.create,

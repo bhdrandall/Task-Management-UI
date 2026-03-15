@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { tasksApi } from '../services/api';
+import { tasksApi, storiesApi } from '../services/api';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useCurrentProject } from '../context/ProjectContext';
 import type { Task, CreateTaskInput, UpdateTaskInput } from '../types';
 import { TASK_STATUSES, TASK_TYPES, PRIORITIES } from '../types';
 
@@ -16,6 +17,7 @@ const statusColors: Record<string, string> = {
 
 export function Tasks() {
   const queryClient = useQueryClient();
+  const { currentProject } = useCurrentProject();
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -27,10 +29,24 @@ export function Tasks() {
     priority: 1,
   });
 
-  const { data: tasks = [], isLoading } = useQuery({
+  // Get stories for the current project to filter tasks
+  const { data: stories = [] } = useQuery({
+    queryKey: ['stories', currentProject?.id],
+    queryFn: () => storiesApi.list(currentProject?.id),
+    enabled: !!currentProject,
+  });
+
+  const storyIds = stories.map(s => s.id);
+
+  const { data: allTasks = [], isLoading } = useQuery({
     queryKey: ['tasks', statusFilter],
     queryFn: () => tasksApi.list(statusFilter ? { status: statusFilter } : undefined),
   });
+
+  // Filter tasks by current project's stories
+  const tasks = currentProject 
+    ? allTasks.filter(t => t.story_id && storyIds.includes(t.story_id))
+    : allTasks;
 
   const createMutation = useMutation({
     mutationFn: tasksApi.create,

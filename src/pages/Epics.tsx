@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { epicsApi, projectsApi } from '../services/api';
+import { epicsApi } from '../services/api';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { useCurrentProject } from '../context/ProjectContext';
 import type { Epic } from '../types';
 
 export function Epics() {
   const queryClient = useQueryClient();
+  const { currentProject } = useCurrentProject();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEpic, setEditingEpic] = useState<Epic | null>(null);
   const [formData, setFormData] = useState({
@@ -16,17 +18,16 @@ export function Epics() {
   });
 
   const { data: epics = [], isLoading } = useQuery({
-    queryKey: ['epics'],
-    queryFn: () => epicsApi.list(),
-  });
-
-  const { data: projects = [] } = useQuery({
-    queryKey: ['projects'],
-    queryFn: projectsApi.list,
+    queryKey: ['epics', currentProject?.id],
+    queryFn: () => epicsApi.list(currentProject?.id),
+    enabled: !!currentProject,
   });
 
   const createMutation = useMutation({
-    mutationFn: epicsApi.create,
+    mutationFn: (data: Partial<Epic>) => epicsApi.create({
+      ...data,
+      project_id: currentProject?.id,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['epics'] });
       closeModal();
@@ -138,7 +139,7 @@ export function Epics() {
                   {epic.status}
                 </span>
                 <span>
-                  {projects.find(p => p.id === epic.project_id)?.name || 'No project'}
+                  {currentProject?.name || 'No project'}
                 </span>
               </div>
             </div>
@@ -166,16 +167,12 @@ export function Epics() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
-                  <select
-                    value={formData.project_id || ''}
-                    onChange={e => setFormData({ ...formData, project_id: e.target.value ? Number(e.target.value) : undefined })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">No project</option>
-                    {projects.map(project => (
-                      <option key={project.id} value={project.id}>{project.name}</option>
-                    ))}
-                  </select>
+                  <input
+                    type="text"
+                    value={currentProject?.name || 'No project selected'}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>

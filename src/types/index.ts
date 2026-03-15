@@ -9,12 +9,15 @@ export interface Project {
   updated_at: string;
 }
 
+export type WorkflowType = 'development' | 'specification';
+
 export interface Workflow {
   id: number;
   project_id?: number;
   name: string;
   description?: string;
   bpmn_xml?: string;
+  workflow_type: WorkflowType;
   status: string;
   version: number;
   created_at: string;
@@ -120,11 +123,13 @@ export interface CreateWorkflowInput {
   description?: string;
   project_id?: number;
   bpmn_xml?: string;
+  workflow_type?: WorkflowType;
 }
 
 // Status and type constants
 export const TASK_STATUSES = ['todo', 'in_progress', 'review', 'done', 'blocked'] as const;
 export const TASK_TYPES = ['development', 'bug', 'documentation', 'testing', 'design', 'research'] as const;
+export const WORKFLOW_TYPES = ['development', 'specification'] as const;
 export const PRIORITIES = [
   { value: 0, label: 'Low' },
   { value: 1, label: 'Medium' },

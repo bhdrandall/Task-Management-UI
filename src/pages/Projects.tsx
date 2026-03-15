@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { projectsApi } from '../services/api';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Check } from 'lucide-react';
+import { useCurrentProject } from '../context/ProjectContext';
 import type { Project, CreateProjectInput } from '../types';
 
 export function Projects() {
   const queryClient = useQueryClient();
+  const { currentProject, setCurrentProject } = useCurrentProject();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [formData, setFormData] = useState<CreateProjectInput>({ name: '', description: '' });
@@ -88,38 +90,70 @@ export function Projects() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map(project => (
-            <div key={project.id} className="bg-white rounded-lg shadow p-6">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => openModal(project)}
-                    className="p-1 text-gray-400 hover:text-blue-600"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => deleteMutation.mutate(project.id)}
-                    className="p-1 text-gray-400 hover:text-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+          {projects.map(project => {
+            const isSelected = currentProject?.id === project.id;
+            return (
+              <div 
+                key={project.id} 
+                className={`bg-white rounded-lg shadow p-6 cursor-pointer transition-all ${
+                  isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : 'hover:shadow-lg'
+                }`}
+                onClick={() => setCurrentProject(project)}
+              >
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    {isSelected && (
+                      <span className="flex items-center justify-center w-5 h-5 bg-blue-500 rounded-full">
+                        <Check className="w-3 h-3 text-white" />
+                      </span>
+                    )}
+                    <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openModal(project);
+                      }}
+                      className="p-1 text-gray-400 hover:text-blue-600"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm('Delete this project?')) {
+                          deleteMutation.mutate(project.id);
+                          if (isSelected) {
+                            setCurrentProject(null);
+                          }
+                        }
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
+                <p className="text-gray-500 text-sm mb-4">
+                  {project.description || 'No description'}
+                </p>
+                <div className="flex justify-between items-center text-xs text-gray-400">
+                  <span className={`px-2 py-1 rounded-full ${
+                    project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {project.status}
+                  </span>
+                  <span>Created {new Date(project.created_at).toLocaleDateString()}</span>
+                </div>
+                {isSelected && (
+                  <div className="mt-3 pt-3 border-t border-blue-200">
+                    <span className="text-xs text-blue-600 font-medium">Currently Selected</span>
+                  </div>
+                )}
               </div>
-              <p className="text-gray-500 text-sm mb-4">
-                {project.description || 'No description'}
-              </p>
-              <div className="flex justify-between items-center text-xs text-gray-400">
-                <span className={`px-2 py-1 rounded-full ${
-                  project.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {project.status}
-                </span>
-                <span>Created {new Date(project.created_at).toLocaleDateString()}</span>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
